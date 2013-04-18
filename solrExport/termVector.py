@@ -21,19 +21,37 @@ class TermVector(object):
                 for key, value
                 in zipListToDict(definitionField).iteritems()}
 
-    def __init__(self, tvFromSolr):
+    def __init__(self):
         """ Construct tv around a documents tv in the Solr response"""
         super(TermVector, self).__init__()
-        zipped = zipListToDict(tvFromSolr)
-        self.uniqueKey = zipped['uniqueKey']
-        self.termVector = self.__zipTermComponents(zipped['definition'])
+        self.uniqueKey = None
+        self.termVector = {}
 
     def getTfs(self):
         return {key: value['tf'] for key, value in self.termVector.iteritems()}
 
-    def translated(self, termDict):
+    def toFeaturePairs(self, termDict):
         return {termDict.termToCol[key]: value for
                 key, value in self.termVector.iteritems()}
+
+    def __str__(self):
+        return str(self.uniqueKey) + "||" + str(self.termVector)
+
+    @staticmethod
+    def fromSolr(tvFromSolr):
+        tv = TermVector()
+        zipped = zipListToDict(tvFromSolr)
+        tv.uniqueKey = zipped['uniqueKey']
+        tv.termVector = tv.__zipTermComponents(zipped['definition'])
+        return tv
+
+    @staticmethod
+    def fromFeaturePairs(termDict, uniqueKey, featurePairs, featureName):
+        tv = TermVector()
+        tv.uniqueKey = uniqueKey
+        tv.termVector = {termDict.colToTerm[col]: {featureName: feature}
+                         for col, feature in featurePairs}
+        return tv
 
 
 class TermVectorCollection(object):
@@ -47,7 +65,7 @@ class TermVectorCollection(object):
         self.tvs = {}
         for tv in termVectors:
             if "uniqueKey" in tv and isinstance(tv, list):
-                parsedTv = TermVector(tv)
+                parsedTv = TermVector.fromSolr(tv)
                 self.tvs[parsedTv.uniqueKey] = parsedTv
                 self.termDict.addTerms(parsedTv.termVector.keys())
 
@@ -61,9 +79,15 @@ class TermVectorCollection(object):
                                               self.termDict.numTerms())
 
     def __iter__(self):
+        """ Generate feature pairs"""
         for key, tv in self.tvs.iteritems():
             yield {col: value['tf'] for col, value
-                   in tv.translated(self.termDict).iteritems()}.items()
+                   in tv.toFeaturePairs(self.termDict).iteritems()}.items()
+
+    def keyIter(self):
+        """ Return an iterator that iterates the names of
+            documents in parallel with the feature pairs"""
+        return iter(self.tvs.keys())
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 import requests
-from termVector import TermVectorCollection
+from termVector import TermVectorCollection, TermVector
 
 
 class TermVectorCollector(object):
@@ -26,7 +26,6 @@ class TermVectorCollector(object):
         self.tvField = tvField
 
     def collect(self, start, rows):
-        from sys import stderr
         params = {"tv.fl": self.tvField,
                   "fl": "id",
                   "wt": "json",
@@ -62,11 +61,13 @@ class TermVectorCollector(object):
 
 if __name__ == "__main__":
     from sys import argv
+    from itertools import izip
     #respJson = json.loads(open('tvTest.json').read())
     #tvResp = TermVector(respJson)
     tvc = TermVectorCollector(argv[1], argv[2], argv[3])
     corpus = tvc.collectBatch(0, 10, 10)
     print len(corpus.tvs)
-    for tv in corpus:
-        print tv
+    keyIter = corpus.keyIter()
+    for docId, tv in izip(keyIter, corpus):
+        print TermVector.fromFeaturePairs(corpus.termDict, docId, tv, "tf")
     print "Done"
