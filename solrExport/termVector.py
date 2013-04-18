@@ -13,7 +13,8 @@ def zipListToDict(tvEntry):
 
 
 class TermVector(object):
-    """ A single document's term vector"""
+    """ A single document's term vector, parsed
+        from Solr"""
     @staticmethod
     def __zipTermComponents(definitionField):
         return {key: zipListToDict(value)
@@ -27,12 +28,20 @@ class TermVector(object):
         self.uniqueKey = zipped['uniqueKey']
         self.termVector = self.__zipTermComponents(zipped['definition'])
 
+    def getTfs(self):
+        return {key: value['tf'] for key, value in self.termVector.iteritems()}
+
+    def translated(self, termDict):
+        return {termDict.termToCol[key]: value for
+                key, value in self.termVector.iteritems()}
+
 
 class TermVectorCollection(object):
     """ A collection of term vectors that represents part of a corpus"""
     def __init__(self, solrResp):
         """ Construct a collection of termVectors around the Solr resp"""
         super(TermVectorCollection, self).__init__()
+        print type(solrResp)
         termVectors = solrResp['termVectors']
         self.termDict = TermDictionary()
         self.tvs = {}
@@ -50,6 +59,11 @@ class TermVectorCollection(object):
     def __str__(self):
         return "Term Vectors %i; Terms %i" % (len(self.tvs),
                                               self.termDict.numTerms())
+
+    def __iter__(self):
+        for key, tv in self.tvs.iteritems():
+            yield {col: value['tf'] for col, value
+                   in tv.translated(self.termDict).iteritems()}.items()
 
 
 if __name__ == "__main__":

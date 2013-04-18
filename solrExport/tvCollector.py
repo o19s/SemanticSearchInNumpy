@@ -36,11 +36,10 @@ class TermVectorCollector(object):
                   "start": start,
                   "q": self.tvField + ":[* TO *]"}
         resp = requests.get(url=self.solrTvrhUrl,
-                            params=params,
-                            config={'verbose': stderr})
+                            params=params)
         if resp.status_code != 200:
             raise IOError("HTTP Status " + str(resp.status_code))
-        return TermVectorCollection(resp.json)
+        return TermVectorCollection(resp.json())
 
     def collectMerge(self, existingTvc, start, rows):
         if existingTvc is None:
@@ -66,6 +65,8 @@ if __name__ == "__main__":
     #respJson = json.loads(open('tvTest.json').read())
     #tvResp = TermVector(respJson)
     tvc = TermVectorCollector(argv[1], argv[2], argv[3])
-    corpus = tvc.collectBatch(0, 12000, 1000)
+    corpus = tvc.collectBatch(0, 10, 10)
     print len(corpus.tvs)
+    for tv in corpus:
+        print tv
     print "Done"
