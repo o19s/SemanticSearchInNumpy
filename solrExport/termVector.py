@@ -41,12 +41,15 @@ class TermVectorCollection(object):
                 parsedTv = TermVector(tv)
                 self.tvs[parsedTv.uniqueKey] = parsedTv
                 self.termDict.addTerms(parsedTv.termVector.keys())
-        print self.termDict
 
     def merge(self, tvc):
         """ Merge tvc into self """
         self.tvs = dict(tvc.tvs.items() + self.tvs.items())
         self.termDict.appendTd(tvc.termDict)
+
+    def __str__(self):
+        return "Term Vectors %i; Terms %i" % (len(self.tvs),
+                                              self.termDict.numTerms())
 
 
 if __name__ == "__main__":

@@ -26,6 +26,10 @@ class TermDictionary(object):
             they may overlap here"""
         self.addTerms(td.termToCol.keys())
 
+    def numTerms(self):
+        assert len(self.termToCol) == len(self.colToTerm)
+        return len(self.termToCol)
+
     def __str__(self):
         assert len(self.termToCol) == len(self.colToTerm)
         return str(len(self.termToCol)) + ": " + repr(self.termToCol)

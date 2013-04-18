@@ -14,7 +14,6 @@ class TermVectorCollector(object):
                                                path='',
                                                query='',
                                                fragment='')
-        print schemeAndNetloc
         solrBaseUrl = urlparse.urlunsplit(schemeAndNetloc)
         solrBaseUrl = urlparse.urljoin(solrBaseUrl, 'solr/')
         solrBaseUrl = urlparse.urljoin(solrBaseUrl, collection + '/')
@@ -27,6 +26,7 @@ class TermVectorCollector(object):
         self.tvField = tvField
 
     def collect(self, start, rows):
+        from sys import stderr
         params = {"tv.fl": self.tvField,
                   "fl": "id",
                   "wt": "json",
@@ -36,13 +36,29 @@ class TermVectorCollector(object):
                   "start": start,
                   "q": self.tvField + ":[* TO *]"}
         resp = requests.get(url=self.solrTvrhUrl,
-                            params=params)
+                            params=params,
+                            config={'verbose': stderr})
+        if resp.status_code != 200:
+            raise IOError("HTTP Status " + str(resp.status_code))
         return TermVectorCollection(resp.json)
 
     def collectMerge(self, existingTvc, start, rows):
-        newTvc = self.collect(start, rows)
-        existingTvc.merge(newTvc)
-        return existingTvc
+        if existingTvc is None:
+            return self.collect(start, rows)
+        else:
+            newTvc = self.collect(start, rows)
+            existingTvc.merge(newTvc)
+            return existingTvc
+
+    def collectBatch(self, start, totalSize, batchSize):
+        tvc = None
+        for currStart in range(start, totalSize, batchSize):
+            tvc = self.collectMerge(existingTvc=tvc,
+                                    start=currStart,
+                                    rows=batchSize)
+            assert tvc is not None
+            print tvc
+        return tvc
 
 
 if __name__ == "__main__":
@@ -50,5 +66,6 @@ if __name__ == "__main__":
     #respJson = json.loads(open('tvTest.json').read())
     #tvResp = TermVector(respJson)
     tvc = TermVectorCollector(argv[1], argv[2], argv[3])
-    tvc.collect(0, 1000)
+    corpus = tvc.collectBatch(0, 12000, 1000)
+    print len(corpus.tvs)
     print "Done"
