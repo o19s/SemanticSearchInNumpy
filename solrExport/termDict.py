@@ -1,15 +1,24 @@
-class TermDictionary(object):
+class TermDictionary(dict):
     """ Assigns an integer id to a term, this id
         is going to correspond to a feature in gensim or a
         column in a term/doc matrix"""
-    def __init__(self):
+    def __init__(self, *args):
         """ Init an empty term dictionary"""
-        super(TermDictionary, self).__init__()
+        super(TermDictionary, self).__init__(args)
         # terms -> column id
         # columnId -> term
         self.termToCol = {}
         self.colToTerm = {}
         self.counter = 0
+
+    def __getitem__(self, key):
+        return self.colToTerm[key]
+
+    def __len__(self):
+        return self.numTerms()
+
+    def keys(self):
+        return self.colToTerm.keys()
 
     def addTerms(self, terms):
         """ Add terms to the dictionary"""

@@ -59,15 +59,22 @@ class TermVectorCollector(object):
         return tvc
 
 
+from gensim import models
+
 if __name__ == "__main__":
     from sys import argv
     from itertools import izip
     #respJson = json.loads(open('tvTest.json').read())
     #tvResp = TermVector(respJson)
     tvc = TermVectorCollector(argv[1], argv[2], argv[3])
-    corpus = tvc.collectBatch(0, 10, 10)
+    corpus = tvc.collectBatch(start=0, totalSize=12000, batchSize=1000)
     print len(corpus.tvs)
     keyIter = corpus.keyIter()
-    for docId, tv in izip(keyIter, corpus):
-        print TermVector.fromFeaturePairs(corpus.termDict, docId, tv, "tf")
+    #for docId, tv in izip(keyIter, corpus):
+    #    print TermVector.fromFeaturePairs(corpus.termDict, docId, tv, "tf")
+    tfidf = models.TfidfModel(corpus)
+    lsi = models.LsiModel(corpus, num_topics=4, id2word=corpus.termDict)
+    print lsi.show_topics(num_topics=1)
+    # Scores this document in the 2 topics above
+    # print lsi[aTv]
     print "Done"
