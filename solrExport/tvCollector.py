@@ -64,7 +64,7 @@ class TermVectorCollector(object):
 from gensim import models
 
 if __name__ == "__main__":
-    numTopics = 5
+    numTopics = 10
     from sys import argv
     from itertools import izip
     import sparsesvd
@@ -72,8 +72,8 @@ if __name__ == "__main__":
     #respJson = json.loads(open('tvTest.json').read())
     #tvResp = TermVector(respJson)
     tvc = TermVectorCollector(argv[1], argv[2], argv[3])
-    corpus = tvc.collectBatch(start=0, totalSize=50, batchSize=50)
-    corpus.setFeature('tf-idf')
+    corpus = tvc.collectBatch(start=0, totalSize=50000, batchSize=5000)
+    corpus.setFeature('tf')
     print len(corpus.tvs)
     keyIter = corpus.keyIter()
     #for docId, tv in izip(keyIter, corpus):
@@ -104,16 +104,19 @@ if __name__ == "__main__":
 
     topicBags = {i: [] for i in range(0, numTopics)}
 
-    for termCol, term in enumerate(u.T):
-        topicBags[term.argmax()].append((corpus.termDict[termCol],
-                                         term[term.argmax()]))
+    for termColNo, termVectInTopicSpace in enumerate(u.T):
+        mostPromTopic = termVectInTopicSpace.argmax()
+        mostPromTopicWeight = termVectInTopicSpace[mostPromTopic]
+        topicBags[mostPromTopic].append((corpus.termDict[termColNo],
+                                         mostPromTopicWeight))
 
     topicBags = {topicRow:
-                 sorted(terms, key=lambda termAndScore: termAndScore[1])
+                 sorted(terms, key=lambda termAndScore: termAndScore[1],
+                        reverse=True)
                  for topicRow, terms in topicBags.iteritems()}
 
     print "TOP 5 TOPICS"
-    for i in range(0, 5):
+    for i in range(0, 10):
         print "Topic %i\n\n" % i
         print topicBags[i][:20]
 
