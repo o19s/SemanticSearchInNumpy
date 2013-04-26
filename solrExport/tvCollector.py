@@ -24,6 +24,8 @@ class TermVectorCollector(object):
         super(TermVectorCollector, self).__init__()
         self.solrTvrhUrl = self.__pathToTvrh(solrUrl, collection)
         self.tvField = tvField
+        self.sess = requests.Session()
+        print "SESS %s" % self.sess
 
     def collect(self, start, rows):
         params = {"tv.fl": self.tvField,
@@ -34,11 +36,11 @@ class TermVectorCollector(object):
                   "rows": rows,
                   "start": start,
                   "q": self.tvField + ":[* TO *]"}
-        resp = requests.get(url=self.solrTvrhUrl,
-                            params=params)
+        resp = self.sess.get(url=self.solrTvrhUrl,
+                             params=params)
         if resp.status_code != 200:
             raise IOError("HTTP Status " + str(resp.status_code))
-        return TermVectorCollection(resp.json())
+        return TermVectorCollection(resp.json(), self.tvField)
 
     def collectMerge(self, existingTvc, start, rows):
         if existingTvc is None:
@@ -62,19 +64,62 @@ class TermVectorCollector(object):
 from gensim import models
 
 if __name__ == "__main__":
+    numTopics = 5
     from sys import argv
     from itertools import izip
+    import sparsesvd
+    import numpy
     #respJson = json.loads(open('tvTest.json').read())
     #tvResp = TermVector(respJson)
     tvc = TermVectorCollector(argv[1], argv[2], argv[3])
-    corpus = tvc.collectBatch(start=0, totalSize=12000, batchSize=1000)
+    corpus = tvc.collectBatch(start=0, totalSize=50, batchSize=50)
+    corpus.setFeature('tf-idf')
     print len(corpus.tvs)
     keyIter = corpus.keyIter()
     #for docId, tv in izip(keyIter, corpus):
     #    print TermVector.fromFeaturePairs(corpus.termDict, docId, tv, "tf")
     tfidf = models.TfidfModel(corpus)
-    lsi = models.LsiModel(corpus, num_topics=4, id2word=corpus.termDict)
-    print lsi.show_topics(num_topics=1)
+    #lsi = models.LsiModel(corpus, num_topics=4, id2word=corpus.termDict)
+    u, s, v = sparsesvd.sparsesvd(corpus.toCsc(), numTopics)
+
+    print u.T
+    print s
+
+    us = numpy.zeros(shape=(u[0].size, numTopics))
+    print us
+    us.reshape(numTopics, -1)
+
+    # multiply in the singular values
+    for colNo, col in enumerate(u.T):
+        us[colNo] = numpy.multiply(col, s)
+
+    print us.size
+    print us
+
+    # Rows in u are topics
+    #for topic in u:
+    #    print topic
+
+    u = us.T
+
+    topicBags = {i: [] for i in range(0, numTopics)}
+
+    for termCol, term in enumerate(u.T):
+        topicBags[term.argmax()].append((corpus.termDict[termCol],
+                                         term[term.argmax()]))
+
+    topicBags = {topicRow:
+                 sorted(terms, key=lambda termAndScore: termAndScore[1])
+                 for topicRow, terms in topicBags.iteritems()}
+
+    print "TOP 5 TOPICS"
+    for i in range(0, 5):
+        print "Topic %i\n\n" % i
+        print topicBags[i][:20]
+
+    #for docId, tv in izip(keyIter, corpus):
+    #    print "ORIGINAL %s" % tv
+    #    print "BLURRED  %s" % lsi[tv]
     # Scores this document in the 2 topics above
     # print lsi[aTv]
     print "Done"

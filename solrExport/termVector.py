@@ -27,8 +27,9 @@ class TermVector(object):
         self.uniqueKey = None
         self.termVector = {}
 
-    def getTfs(self):
-        return {key: value['tf'] for key, value in self.termVector.iteritems()}
+    def getFeature(self, feature='tf'):
+        return {key: value[feature]
+                for key, value in self.termVector.iteritems()}
 
     def toFeaturePairs(self, termDict):
         return {termDict.termToCol[key]: value for
@@ -38,11 +39,11 @@ class TermVector(object):
         return str(self.uniqueKey) + "||" + str(self.termVector)
 
     @staticmethod
-    def fromSolr(tvFromSolr):
+    def fromSolr(tvFromSolr, fieldName):
         tv = TermVector()
         zipped = zipListToDict(tvFromSolr)
         tv.uniqueKey = zipped['uniqueKey']
-        tv.termVector = tv.__zipTermComponents(zipped['definition'])
+        tv.termVector = tv.__zipTermComponents(zipped[fieldName])
         return tv
 
     @staticmethod
@@ -56,16 +57,16 @@ class TermVector(object):
 
 class TermVectorCollection(object):
     """ A collection of term vectors that represents part of a corpus"""
-    def __init__(self, solrResp):
+    def __init__(self, solrResp, fieldName):
         """ Construct a collection of termVectors around the Solr resp"""
         super(TermVectorCollection, self).__init__()
-        print type(solrResp)
         termVectors = solrResp['termVectors']
         self.termDict = TermDictionary()
         self.tvs = {}
+        self.feature = 'tf'  # What feature should we emit for each term
         for tv in termVectors:
             if "uniqueKey" in tv and isinstance(tv, list):
-                parsedTv = TermVector.fromSolr(tv)
+                parsedTv = TermVector.fromSolr(tv, fieldName)
                 self.tvs[parsedTv.uniqueKey] = parsedTv
                 self.termDict.addTerms(parsedTv.termVector.keys())
 
@@ -74,6 +75,15 @@ class TermVectorCollection(object):
         self.tvs = dict(tvc.tvs.items() + self.tvs.items())
         self.termDict.appendTd(tvc.termDict)
 
+    def setFeature(self, feature):
+        validSolrFeatures = ('tf-idf', 'tf', 'df')
+        if feature in validSolrFeatures:
+            self.feature = feature
+        else:
+            raise ValueError("Solr only exports tf, tf-idf, or df; "
+                             "you requested %s" %
+                             feature)
+
     def __str__(self):
         return "Term Vectors %i; Terms %i" % (len(self.tvs),
                                               self.termDict.numTerms())
@@ -81,8 +91,13 @@ class TermVectorCollection(object):
     def __iter__(self):
         """ Generate feature pairs"""
         for key, tv in self.tvs.iteritems():
-            yield {col: value['tf'] for col, value
+            yield {col: value[self.feature] for col, value
                    in tv.toFeaturePairs(self.termDict).iteritems()}.items()
+
+    def toCsc(self):
+        """ Get all in csc form"""
+        from gensim import matutils
+        return matutils.corpus2csc(self)
 
     def keyIter(self):
         """ Return an iterator that iterates the names of
