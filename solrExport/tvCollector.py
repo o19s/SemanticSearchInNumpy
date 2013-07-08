@@ -62,7 +62,6 @@ class TermVectorCollector(object):
 
 
 from gensim import models
-
 if __name__ == "__main__":
     numTopics = 10
     from sys import argv
@@ -78,7 +77,6 @@ if __name__ == "__main__":
     keyIter = corpus.keyIter()
     #for docId, tv in izip(keyIter, corpus):
     #    print TermVector.fromFeaturePairs(corpus.termDict, docId, tv, "tf")
-    tfidf = models.TfidfModel(corpus)
     #lsi = models.LsiModel(corpus, num_topics=4, id2word=corpus.termDict)
     u, s, v = sparsesvd.sparsesvd(corpus.toCsc(), numTopics)
 
@@ -118,7 +116,8 @@ if __name__ == "__main__":
     print "TOP 5 TOPICS"
     for i in range(0, 10):
         print "Topic %i\n\n" % i
-        print topicBags[i][:20]
+        for t in topicBags[i][:20]:
+            print "%s => %d" % t
 
     #for docId, tv in izip(keyIter, corpus):
     #    print "ORIGINAL %s" % tv
