@@ -1,6 +1,7 @@
 import requests
 from termVector import TermVectorCollection, TermVector
-
+import sparsesvd
+from numpy import *
 
 class TermVectorCollector(object):
     """ Query a batch of term vectors for a given field
@@ -61,67 +62,50 @@ class TermVectorCollector(object):
         return tvc
 
 
-from gensim import models
-if __name__ == "__main__":
-    numTopics = 10
-    from sys import argv
-    from itertools import izip
-    import sparsesvd
-    import numpy
-    #respJson = json.loads(open('tvTest.json').read())
-    #tvResp = TermVector(respJson)
-    tvc = TermVectorCollector(argv[1], argv[2], argv[3])
+
+
+
+
+def getTermVectorCollection(field,collection,solrUrl):
+    tvc = TermVectorCollector(solrUrl,collection,field)
     corpus = tvc.collectBatch(start=0, totalSize=50000, batchSize=5000)
     corpus.setFeature('tf')
-    print len(corpus.tvs)
-    keyIter = corpus.keyIter()
-    #for docId, tv in izip(keyIter, corpus):
-    #    print TermVector.fromFeaturePairs(corpus.termDict, docId, tv, "tf")
-    #lsi = models.LsiModel(corpus, num_topics=4, id2word=corpus.termDict)
-    u, s, v = sparsesvd.sparsesvd(corpus.toCsc(), numTopics)
+    return corpus
 
-    print u.T
-    print s
 
-    us = numpy.zeros(shape=(u[0].size, numTopics))
-    print us
-    us.reshape(numTopics, -1)
+class PseudoTermVectors(object):
+    def __init__(self,corpus,numTopics,cutoff=0.000001):
+        u, s, self.v = sparsesvd.sparsesvd(corpus.toCsc(), numTopics)
+        self.uPrime = dot(u.T,diag(s))
+        self.corpus = corpus
+        self.valueCutoff = cutoff
 
-    # multiply in the singular values
-    for colNo, col in enumerate(u.T):
-        us[colNo] = numpy.multiply(col, s)
+    def     getPseudoTermVector(self,n):
+        return dot(self.uPrime,self.v[:,n:n+1])[:,0]
 
-    print us.size
-    print us
+    def hist(self,n):
+        return histogram(self.getPseudoTermVector(n), bins=linspace(-self.valueCutoff*3,self.valueCutoff*3,10))
 
-    # Rows in u are topics
-    #for topic in u:
-    #    print topic
+    def getPseudoTokens(self,n):
+        indices = where(self.getPseudoTermVector(n)>self.valueCutoff)[0]
+        return [self.corpus.termDict[i] for i in indices]
 
-    u = us.T
 
-    topicBags = {i: [] for i in range(0, numTopics)}
 
-    for termColNo, termVectInTopicSpace in enumerate(u.T):
-        mostPromTopic = termVectInTopicSpace.argmax()
-        mostPromTopicWeight = termVectInTopicSpace[mostPromTopic]
-        topicBags[mostPromTopic].append((corpus.termDict[termColNo],
-                                         mostPromTopicWeight))
 
-    topicBags = {topicRow:
-                 sorted(terms, key=lambda termAndScore: termAndScore[1],
-                        reverse=True)
-                 for topicRow, terms in topicBags.iteritems()}
 
-    print "TOP 5 TOPICS"
-    for i in range(0, 10):
-        print "Topic %i\n\n" % i
-        for t in topicBags[i][:20]:
-            print "%s => %d" % t
 
-    #for docId, tv in izip(keyIter, corpus):
-    #    print "ORIGINAL %s" % tv
-    #    print "BLURRED  %s" % lsi[tv]
-    # Scores this document in the 2 topics above
-    # print lsi[aTv]
-    print "Done"
+def main(field,collection,solrUrl):
+    corpus =getTermVectorCollection(field,collection,solrUrl)
+    numTopics = 10
+    pseudoTermVectors = PseudoTermVectors(corpus,numTopics)
+
+if __name__ == "__main__":
+    from sys import argv
+    if len(argv)==0:
+        raise Exception("usage: python tvCollect.py fieldname [collection [solrUrl]]")
+
+    field = argv[1]
+    collection = argv[2] if len(argv)>2 else "collection1"
+    solrUrl = argv[3] if len(argv)>3 else "http://localhost:8983/solr"
+    main(field,collection,solrUrl)
