@@ -1,7 +1,5 @@
 import requests
-
-
-
+from collections import deque
 class SolrTermVectorCollector(object):
     def __pathToTvrh(self, solrUrl, collection):
         import urlparse
@@ -31,29 +29,41 @@ class SolrTermVectorCollector(object):
         self.sess = requests.Session()
         self.count = 0
 
-    def __iter__(self):
-        #TODO seems like only one batch is being sent
-        params = {"tv.fl": self.field,
-                  "fl": "nonexistentfield",#to limit the volumn of data returned
-                  "wt": "json",
-                  "tv.all": "true",
-                  "rows": min(self.batchSize, self.numDocs-self.count),
-                  "start": self.count,
-                  "q": self.field + ":*"}
-        resp = self.sess.get(url=self.solrTvrhUrl, params=params)
-        if resp.status_code != 200:
-            raise IOError("HTTP Status " + str(resp.status_code))
+        self.termVectors = []
 
-        termVectors = resp.json()['termVectors']
-        for tv in termVectors[3::2]:#overcoming weird non-dictionary json format
-            id = tv[1]
-            termVector = {}
-            data = tv[3] #all of the terms and features in this vector
-            for i in xrange(0,len(data),2):
-                term = data[i]
-                featureValue = [data[i+1][j+1] for j in range(len(data[i+1])) if data[i+1][j] == self.feature][0]
-                termVector[term] = featureValue
-            yield (id, termVector)
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self.count >= self.numDocs:
+            raise StopIteration
+        if len(self.termVectors) == 0:
+            #then get some more!
+            params = {"tv.fl": self.field,
+                      "fl": "nonexistentfield",#to limit the volumn of data returned
+                      "wt": "json",
+                      "tv.all": "true",
+                      "rows": min(self.batchSize, self.numDocs-self.count),
+                      "start": self.count,
+                      "q": self.field + ":*"}
+            resp = self.sess.get(url=self.solrTvrhUrl, params=params)
+            if resp.status_code != 200:
+                raise IOError("HTTP Status " + str(resp.status_code))
+            self.termVectors = deque(resp.json()['termVectors'][3::2])#overcoming weird non-dictionary json format
+
+        if len(self.termVectors) == 0:
+            #then Solr's our of documents
+            raise StopIteration
+        tv = self.termVectors.popleft()
+        id = tv[1]
+        termVector = {}
+        data = tv[3] #all of the terms and features in this vector
+        for i in xrange(0,len(data),2):
+            term = data[i]
+            featureValue = [data[i+1][j+1] for j in range(len(data[i+1])) if data[i+1][j] == self.feature][0]
+            termVector[term] = featureValue
+        self.count += 1
+        return (id, termVector)
 
 
 
