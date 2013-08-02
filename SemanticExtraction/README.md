@@ -2,6 +2,9 @@
 
 
 ##Index documents into Solr
+
+In the StackExchangeSolrIndexing folder:
+
 * Download a StackExchange dump of your choosing:
    http://www.clearbits.net/torrents/2076-aug-2012 (or the start
 immediatly with the posts.xml.gz file)
@@ -28,5 +31,8 @@ localhost:8983/solr/collection1/select?q=Tags:star-wars
 ```
 
 ##Auto-Generate Synonyms
+
+In the SemanticExtraction folder
+
 * Run `python SemanticAnalyzer.py Body`
 * Do some searches! http://localhost:8983/solr/select?q=Tags:harry-potter&fq=Body:*&fl=Body%20BodyBlurred%20Tags%20Id&facet=true&facet.field=Tags
