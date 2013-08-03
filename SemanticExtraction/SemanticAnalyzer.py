@@ -184,8 +184,21 @@ class TermDocCollection(object):
         else:
             u = self._getUprime()
 
-        return [self._termDict[i] 
-                for i in numpy.where(u.T[topicNum]>cutoff)[0]]
+        return  [self._termDict[i] 
+                    for i in numpy.where(u.T[topicNum]>cutoff)[0]
+                ]
+        
+    def getRelatedTerms(self,token,numTerms,tokens_only=True):
+        uP = self._getUprime()
+        termDict = self._termDict
+        u,_,_ = self._getSvd()
+        strength_and_indices = sorted( zip(numpy.dot(uP[termDict[token]],u),range(len(uP))) , reverse=True )
+        method = 0
+        if tokens_only:
+            method = lambda i: termDict[i[1]]
+        else:
+            method = lambda i: (termDict[i[1]],i[0])
+        return  [ method(i) for i in strength_and_indices[:numTerms] ]
 
 
 class SolrBlurredTermUpdater(object):
@@ -269,6 +282,18 @@ def main(field,collection,solrUrl):
     say(tdc.getBlurredTerms('20710',0.2)[1])
     print "harry potter document"
     say(tdc.getBlurredTerms('17250',0.1)[1])
+
+    print "DEMO TERM SIMILARITY"
+    print "kirk"
+    say(tdc.getRelatedTerms('kirk',30))
+    print "potter"
+    say(tdc.getRelatedTerms('potter',30))
+    print "vader"
+    say(tdc.getRelatedTerms('vader',30))
+    print "power"
+    say(tdc.getRelatedTerms('power',30))
+    print "frodo"
+    say(tdc.getRelatedTerms('frodo',30))
     
     print "SENDING UPDATES TO SOLR"
     SolrBlurredTermUpdater(tdc,blurredField="BodyBlurred").pushToSolr(0.1)
