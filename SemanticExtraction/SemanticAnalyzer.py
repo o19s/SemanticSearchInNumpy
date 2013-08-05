@@ -264,7 +264,7 @@ def say(a_list):
 
 def main(field,collection,solrUrl):
     print "COLLECTING TERMS"
-    stvc = SolrTermVectorCollector(field='Body',feature='tf',batchSize=1000)
+    stvc = SolrTermVectorCollector(field=field,feature='tf',batchSize=1000)
     tdc = TermDocCollection(source=stvc,numTopics=150)
 
     print "\nDEMO TOPICS"
@@ -277,13 +277,13 @@ def main(field,collection,solrUrl):
     print "**lord of the rings**"
     say(tdc.getTopic(12,1))
 
-    print "/nDEMO AUTOGEN SYNONYMS FOR DOCUMENTS"
+    print "\nDEMO AUTOGEN SYNONYMS FOR DOCUMENTS"
     print "**star wars document**"
     say(tdc.getBlurredTerms('20710',0.2)[1])
     print "**harry potter document**"
     say(tdc.getBlurredTerms('17250',0.1)[1])
 
-    print "/nDEMO TERM SIMILARITY"
+    print "\nDEMO TERM SIMILARITY"
     print "**kirk**"
     say(tdc.getRelatedTerms('kirk',30))
     print "**potter**"
@@ -295,7 +295,7 @@ def main(field,collection,solrUrl):
     print "**frodo**"
     say(tdc.getRelatedTerms('frodo',30))
     
-    print "/nSENDING UPDATES TO SOLR"
+    print "\nSENDING UPDATES TO SOLR"
     SolrBlurredTermUpdater(tdc,blurredField="BodyBlurred").pushToSolr(0.1)
     print "done"
 
