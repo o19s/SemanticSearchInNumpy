@@ -24,11 +24,12 @@ def main(fileName):
             else:
                 return
 
+
 def post(url, data):
     url = urlparse(url)
 
     conn = httplib.HTTPConnection(url.netloc)
-    conn.request('POST', url.path, data, {"Content-type": "text/xml"})
+    conn.request('POST', url.path+"?commit=true", data, {"Content-type": "text/xml"})
     resp = conn.getresponse()
 
     print resp.read() #TODO do someting smarter

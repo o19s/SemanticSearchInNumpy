@@ -267,36 +267,37 @@ def main(field,collection,solrUrl):
     stvc = SolrTermVectorCollector(field='Body',feature='tf',batchSize=1000)
     tdc = TermDocCollection(source=stvc,numTopics=150)
 
-    print "DEMO TOPICS"
-    print "special powers"
+    print "\nDEMO TOPICS"
+    print "**special powers**"
     say(tdc.getTopic(4,1))
-    print "star wars"
+    print "**star wars**"
     say(tdc.getTopic(10,0.5))
-    print "uncanny xmen"
+    print "**uncanny xmen**"
     say(tdc.getTopic(11,1))
-    print "lord of the rings"
+    print "**lord of the rings**"
     say(tdc.getTopic(12,1))
 
-    print "DEMO AUTOGEN SYNONYMS FOR DOCUMENTS"
-    print "star wars document"
+    print "/nDEMO AUTOGEN SYNONYMS FOR DOCUMENTS"
+    print "**star wars document**"
     say(tdc.getBlurredTerms('20710',0.2)[1])
-    print "harry potter document"
+    print "**harry potter document**"
     say(tdc.getBlurredTerms('17250',0.1)[1])
 
-    print "DEMO TERM SIMILARITY"
-    print "kirk"
+    print "/nDEMO TERM SIMILARITY"
+    print "**kirk**"
     say(tdc.getRelatedTerms('kirk',30))
-    print "potter"
+    print "**potter**"
     say(tdc.getRelatedTerms('potter',30))
-    print "vader"
+    print "**vader**"
     say(tdc.getRelatedTerms('vader',30))
-    print "power"
+    print "**power**"
     say(tdc.getRelatedTerms('power',30))
-    print "frodo"
+    print "**frodo**"
     say(tdc.getRelatedTerms('frodo',30))
     
-    print "SENDING UPDATES TO SOLR"
+    print "/nSENDING UPDATES TO SOLR"
     SolrBlurredTermUpdater(tdc,blurredField="BodyBlurred").pushToSolr(0.1)
+    print "done"
 
 if __name__ == "__main__":
     from sys import argv
