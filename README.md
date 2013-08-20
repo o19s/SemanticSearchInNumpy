@@ -25,11 +25,6 @@ python extractDocs.py "<full_path_to_stack_exchange_dump>/posts.xml"
 ```
 
 (Configuration details can be found in solr_home/collection1/conf/schema.xml)
-* Commit the changes
-
-```
-http://localhost:8983/solr/update?commit=true
-```
 
 * Search!
 
@@ -46,5 +41,5 @@ In the SemanticExtraction folder
 ```
 python SemanticAnalyzer.py Body
 ```
-
+* Look at Solr logging to see how many documents have been processed
 * Do some searches! http://localhost:8983/solr/select?q=Tags:harry-potter&fq=Body:*&fl=Body%20BodyBlurred%20Tags%20Id&facet=true&facet.field=Tags

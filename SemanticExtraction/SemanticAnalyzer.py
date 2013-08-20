@@ -69,12 +69,20 @@ class SolrTermVectorCollector(object):
 
 from collections import defaultdict
 class StringIndexDict(object):
+    """
+    A 2-way dict-like object that only has functionality for getting and item.
+    If you get with a string key, it will return the integer associated with that key.
+    If you get with a integer key, it will return the string associated with that key.
+    If you get an item that's currently not there, then the dict will return the next available
+    integer (unique) and return that. If you call freeze on the dict, then nothing more
+    can be added to it.
+    """
     def __init__(self):
         self.currentIndex = -1
-        self.stringDict = defaultdict(self.count)
+        self.stringDict = defaultdict(self._increment)
         self.indexDict = {}
 
-    def count(self):
+    def _increment(self):
         self.currentIndex += 1
         self.indexDict[self.currentIndex] = self.keyInQuestion #kinda funky, but since this will always be single threaded, it's ok
         return self.currentIndex
@@ -105,7 +113,7 @@ class TermDocCollection(object):
         self._termVectors = []
         self.numTopics = numTopics
         for termVector in source:
-            self._termVectors.append(
+            self._termVectors.append( #append tuple of (docNum, {termNum_i,numberOccurrences_i})
                 (
                     self._docDict[termVector[0]],
                     {self._termDict[k]:v for k,v in termVector[1].iteritems()}
@@ -116,7 +124,6 @@ class TermDocCollection(object):
         self.numTerms = self._termDict.size()
         self.numDocs = self._docDict.size()
 
-
         #memoized later:
         self._svd = None
         self._cscMatrix = None
@@ -124,7 +131,7 @@ class TermDocCollection(object):
         self._uStripped = None
 
 
-    def _getCscMatrix(self):
+    def _getCscMatrix(self):#compressed sparse column matrix
         if self._cscMatrix is not None:
             return self._cscMatrix
         num_nnz, data, indices, indptr = 0, [], [], [0]
@@ -266,16 +273,6 @@ def main(field,collection,solrUrl):
     print "COLLECTING TERMS"
     stvc = SolrTermVectorCollector(field='Body',feature='tf',batchSize=1000)
     tdc = TermDocCollection(source=stvc,numTopics=150)
-
-    print "DEMO TOPICS"
-    print "special powers"
-    say(tdc.getTopic(4,1))
-    print "star wars"
-    say(tdc.getTopic(10,0.5))
-    print "uncanny xmen"
-    say(tdc.getTopic(11,1))
-    print "lord of the rings"
-    say(tdc.getTopic(12,1))
 
     print "DEMO AUTOGEN SYNONYMS FOR DOCUMENTS"
     print "star wars document"
